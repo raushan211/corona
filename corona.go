@@ -38,7 +38,8 @@ func Dummy(c *gin.Context) {
 
 	records := readCsvFile("./full_data.csv")
 	country, ok := c.Params.Get("country")
-	date := getDate(records, country)
+	date, _ := c.GetQuery("date")
+	newCaseCount := getDate(records, country, date)
 	if ok == false {
 		res := gin.H{
 			"error": "name is missing",
@@ -48,9 +49,9 @@ func Dummy(c *gin.Context) {
 	}
 
 	res := gin.H{
-		"Name":    country,
-		"Date":    date,
-		"Country": country,
+		"date":      date,
+		"country":   country,
+		"new_cases": newCaseCount,
 	}
 	c.JSON(http.StatusOK, res)
 }
@@ -92,15 +93,26 @@ func readCsvFile(filePath string) [][]string {
 	return records
 }
 
-func getDate(records [][]string, date string) []string {
-	newCase := []string{}
+func getDate(records [][]string, country string, date string) float64 {
+	newCase := 0.0
 	for i := 1; i < len(records); i++ {
-		if records[i][0] == date {
-			newCase = append(newCase, records[i][2])
+		if records[i][0] == date && records[i][1] == country {
+			total, err := strconv.ParseFloat(records[i][2], 64)
+			if err == nil {
+				newCase = total
+			}
+			break
+		} else if records[i][1] == country && date == "" {
+			total, err := strconv.ParseFloat(records[i][2], 64)
+			if err == nil {
+				newCase = newCase + total
+			}
+			break
 		}
 	}
 	return newCase
 }
+
 func getfromDate(records [][]string, fromDate time.Time) float64 {
 	totalCase := float64(0.0)
 	for i := 1; i < len(records); i++ {
